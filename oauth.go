@@ -6,10 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"runtime"
 
@@ -33,7 +35,7 @@ https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 
 var (
 	clientSecretsFile = flag.String("secrets", "client_secrets.json", "Client Secrets configuration")
-	cacheFile         = flag.String("cache", ".oauth.request.token", "Token cache file")
+	cacheFile         = flag.String("cache", "", "Token cache file")
 )
 
 // ClientConfig is a data structure definition for the client_secrets.json file.
@@ -70,6 +72,14 @@ func openURL(url string) error {
 	return err
 }
 
+func getHomeDir() string {
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return usr.HomeDir
+}
+
 // readConfig reads the configuration from clientSecretsFile.
 // It returns an oauth configuration object for use with the Google API client.
 func readConfig(scope string) (*oauth.Config, error) {
@@ -87,23 +97,14 @@ func readConfig(scope string) (*oauth.Config, error) {
 		return nil, err
 	}
 
-	var redirectUri string
-	if len(cfg.Web.RedirectURIs) > 0 {
-		redirectUri = cfg.Web.RedirectURIs[0]
-	} else if len(cfg.Installed.RedirectURIs) > 0 {
-		redirectUri = cfg.Installed.RedirectURIs[0]
-	} else {
-		return nil, errors.New("Must specify a redirect URI in config file or when creating OAuth client")
-	}
-
 	return &oauth.Config{
 		ClientId:     cfg.Installed.ClientID,
 		ClientSecret: cfg.Installed.ClientSecret,
 		Scope:        scope,
 		AuthURL:      cfg.Installed.AuthURI,
 		TokenURL:     cfg.Installed.TokenURI,
-		RedirectURL:  redirectUri,
-		TokenCache:   oauth.CacheFile(*cacheFile),
+		RedirectURL:  "http://localhost:8080/",
+		TokenCache:   oauth.CacheFile(getHomeDir() + "/.yt-up.oauth.cache"),
 		// Get a refresh token so we can use the access token indefinitely
 		AccessType: "offline",
 		// If we want a refresh token, we must set this attribute
@@ -160,16 +161,16 @@ func buildOAuthHTTPClient(scope string) (*http.Client, error) {
 
 		// Open url in browser
 		url := config.AuthCodeURL("")
-		fmt.Println("URL=" + url)
+		// fmt.Println("URL=" + url)
 		err = openURL(url)
 		if err != nil {
-			fmt.Println("Visit the URL below to get a code.",
+			log.Println("Visit the URL below to get a code.",
 				" This program will pause until the site is visted.")
 		} else {
-			fmt.Println("Your browser has been opened to an authorization URL.",
-				" This program will resume once authorization has been provided.\n")
+			log.Println("Your browser has been opened to an authorization URL.",
+				" This program will resume once authorization has been provided.")
 		}
-		fmt.Println(url)
+		// fmt.Println(url)
 
 		// Wait for the web server to get the code.
 		code := <-codeCh

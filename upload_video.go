@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -24,6 +23,10 @@ const (
 	SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 )
 
+// func progress(current, total int64) {
+// 	fmt.Printf("Uploading %d%...\n", current*100/total)
+// }
+
 func main() {
 	flag.Parse()
 
@@ -31,10 +34,14 @@ func main() {
 		log.Fatalf("You must provide a filename of a video file to upload")
 	}
 
+	log.Printf("Requesting auth token...\n")
+
 	client, err := buildOAuthHTTPClient(SCOPE)
 	if err != nil {
 		log.Fatalf("Error building OAuth client: %v", err)
 	}
+
+	log.Printf("Uploading %s...\n", *filename)
 
 	service, err := youtube.New(client)
 	if err != nil {
@@ -57,6 +64,8 @@ func main() {
 
 	call := service.Videos.Insert("snippet,status", upload)
 
+	// call.ProgressUpdater(progress)
+
 	file, err := os.Open(*filename)
 	defer file.Close()
 	if err != nil {
@@ -67,5 +76,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error making YouTube API call: %v", err)
 	}
-	fmt.Printf("Upload successful! Video ID: %v\n", response.Id)
+	log.Printf("Uploaded: http://youtube.com/watch?v=%v\n", response.Id)
 }
