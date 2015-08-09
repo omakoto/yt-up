@@ -35,7 +35,6 @@ https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 
 var (
 	clientSecretsFile = flag.String("secrets", "client_secrets.json", "Client Secrets configuration")
-	cacheFile         = flag.String("cache", "", "Token cache file")
 )
 
 // ClientConfig is a data structure definition for the client_secrets.json file.
