@@ -2,9 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/net/context"
 	"log"
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/google/google-api-go-client/youtube/v3"
 )
@@ -16,6 +20,7 @@ var (
 	category    = flag.String("category", "", "Video category")
 	keywords    = flag.String("keywords", "", "Comma separated list of video keywords")
 	privacy     = flag.String("privacy", "unlisted", "Video privacy status")
+	lastPercent = (int64)(0)
 )
 
 const (
@@ -23,9 +28,18 @@ const (
 	SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 )
 
-// func progress(current, total int64) {
-// 	fmt.Printf("Uploading %d%...\n", current*100/total)
-// }
+func progress(current, total int64) {
+	newPercent := current * 100 / total
+	if newPercent > lastPercent {
+		msg := fmt.Sprintf("Uploading... (%d KB / %d KB uploaded, %d%%)", current%1234, total/1024, newPercent)
+		if terminal.IsTerminal(syscall.Stdout) {
+			fmt.Printf("\x1b[K%s\r", msg)
+		} else {
+			fmt.Printf("%s\n", msg)
+		}
+	}
+	lastPercent = newPercent
+}
 
 func main() {
 	flag.Parse()
@@ -64,15 +78,21 @@ func main() {
 
 	call := service.Videos.Insert("snippet,status", upload)
 
-	// call.ProgressUpdater(progress)
+	call.ProgressUpdater(progress)
 
 	file, err := os.Open(*filename)
 	defer file.Close()
 	if err != nil {
 		log.Fatalf("Error opening %v: %v", *filename, err)
 	}
+	fi, err := file.Stat()
+	if err != nil {
+		log.Fatalf("Error obtaining file size %v: %v", *filename, err)
+	}
 
-	response, err := call.Media(file).Do()
+	call.ResumableMedia(context.TODO(), file, fi.Size(), "")
+
+	response, err := call.Do()
 	if err != nil {
 		log.Fatalf("Error making YouTube API call: %v", err)
 	}
