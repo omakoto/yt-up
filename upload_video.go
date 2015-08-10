@@ -31,7 +31,7 @@ const (
 func progress(current, total int64) {
 	newPercent := current * 100 / total
 	if newPercent > lastPercent {
-		msg := fmt.Sprintf("Uploading... (%d KB / %d KB uploaded, %d%%)", current%1234, total/1024, newPercent)
+		msg := fmt.Sprintf("Uploading... (%d KB / %d KB uploaded, %d%%)", current/1024, total/1024, newPercent)
 		if terminal.IsTerminal(syscall.Stdout) {
 			fmt.Printf("\x1b[K%s\r", msg)
 		} else {
