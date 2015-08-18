@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/google/google-api-go-client/youtube/v3"
 )
@@ -35,7 +36,7 @@ func progress(current, total int64) {
 		if terminal.IsTerminal(syscall.Stdout) {
 			fmt.Printf("\x1b[K%s\r", msg)
 		} else {
-			fmt.Printf("%s\n", msg)
+			log.Printf("%s\n", msg)
 		}
 	}
 	lastPercent = newPercent
@@ -90,11 +91,24 @@ func main() {
 		log.Fatalf("Error obtaining file size %v: %v", *filename, err)
 	}
 
-	call.ResumableMedia(context.TODO(), file, fi.Size(), "")
+	size := fi.Size()
+
+	call.ResumableMedia(context.TODO(), file, size, "")
+
+	start := time.Now()
 
 	response, err := call.Do()
 	if err != nil {
 		log.Fatalf("Error making YouTube API call: %v", err)
 	}
-	log.Printf("Uploaded: http://youtube.com/watch?v=%v\n", response.Id)
+	end := time.Now()
+
+	duration := end.Sub(start)
+
+	oneHundreadMegMinutes := float64(duration.Minutes() * 100.0 * 1024.0 * 1024.0 / float64(size))
+	if terminal.IsTerminal(syscall.Stdout) {
+		fmt.Printf("\n")
+	}
+
+	log.Printf("Uploaded %.1f MB in %s, %.1f minutes for 100MB : http://youtube.com/watch?v=%v\n", float64(size)/(1024.0*1024.0), duration, oneHundreadMegMinutes, response.Id)
 }
