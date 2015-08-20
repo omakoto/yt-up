@@ -1,57 +1,23 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
 	"os/user"
-	"path/filepath"
 	"runtime"
 
 	"github.com/omakoto/yt-up/oauth"
 )
 
-const missingClientSecretsMessage = `
-Please configure OAuth 2.0
-
-To make this sample run, you need to populate the client_secrets.json file
-found at:
-
-   %v
-
-with information from the {{ Google Cloud Console }}
-{{ https://cloud.google.com/console }}
-
-For more information about the client_secrets.json file format, please visit:
-https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
-`
-
 var (
-	clientSecretsFile = flag.String("secrets", "client_secrets.json", "Client Secrets configuration")
+	clientId     = flag.String("clientid", "", "Client ID")
+	clientSecret = flag.String("secret", "", "Client secret")
 )
-
-// ClientConfig is a data structure definition for the client_secrets.json file.
-// The code unmarshals the JSON configuration file into this structure.
-type ClientConfig struct {
-	ClientID     string   `json:"client_id"`
-	ClientSecret string   `json:"client_secret"`
-	RedirectURIs []string `json:"redirect_uris"`
-	AuthURI      string   `json:"auth_uri"`
-	TokenURI     string   `json:"token_uri"`
-}
-
-// Config is a root-level configuration object.
-type Config struct {
-	Installed ClientConfig `json:"installed"`
-	Web       ClientConfig `json:"web"`
-}
 
 // openURL opens a browser window to the specified location.
 // This code originally appeared at:
@@ -79,35 +45,24 @@ func getHomeDir() string {
 	return usr.HomeDir
 }
 
-// readConfig reads the configuration from clientSecretsFile.
-// It returns an oauth configuration object for use with the Google API client.
-func readConfig(scope string) (*oauth.Config, error) {
-	// Read the secrets file
-	data, err := ioutil.ReadFile(*clientSecretsFile)
-	if err != nil {
-		pwd, _ := os.Getwd()
-		fullPath := filepath.Join(pwd, *clientSecretsFile)
-		return nil, fmt.Errorf(missingClientSecretsMessage, fullPath)
+func buildConfig(scope string) (*oauth.Config, error) {
+	if *clientId == "" {
+		log.Fatalf("You must provide an oauth client ID with -clientid")
 	}
 
-	cfg := new(Config)
-	err = json.Unmarshal(data, &cfg)
-	if err != nil {
-		return nil, err
+	if *clientSecret == "" {
+		log.Fatalf("You must provide an oauth client secret with -secret")
 	}
 
 	return &oauth.Config{
-		ClientId:     cfg.Installed.ClientID,
-		ClientSecret: cfg.Installed.ClientSecret,
-		Scope:        scope,
-		AuthURL:      cfg.Installed.AuthURI,
-		TokenURL:     cfg.Installed.TokenURI,
-		RedirectURL:  "http://localhost:8080/",
-		TokenCache:   oauth.CacheFile(getHomeDir() + "/.yt-up.oauth.cache"),
-		// Get a refresh token so we can use the access token indefinitely
-		AccessType: "offline",
-		// If we want a refresh token, we must set this attribute
-		// to force an approval prompt or the code won't work.
+		ClientId:       *clientId,
+		ClientSecret:   *clientSecret,
+		Scope:          scope,
+		AuthURL:        "https://accounts.google.com/o/oauth2/auth",
+		TokenURL:       "https://accounts.google.com/o/oauth2/token",
+		RedirectURL:    "http://localhost:8080/",
+		TokenCache:     oauth.CacheFile(getHomeDir() + "/.yt-up.oauth.cache"),
+		AccessType:     "offline",
 		ApprovalPrompt: "force",
 	}, nil
 }
@@ -137,7 +92,7 @@ func startWebServer() (codeCh chan string, err error) {
 // It returns an instance of an HTTP client that can be passed to the
 // constructor of the YouTube client.
 func buildOAuthHTTPClient(scope string) (*http.Client, error) {
-	config, err := readConfig(scope)
+	config, err := buildConfig(scope)
 	if err != nil {
 		msg := fmt.Sprintf("Cannot read configuration file: %v", err)
 		return nil, errors.New(msg)

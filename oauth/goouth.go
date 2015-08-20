@@ -1,43 +1,8 @@
+// Based on goauth2
+
 // Copyright 2011 The goauth2 Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-// Package oauth supports making OAuth2-authenticated HTTP requests.
-//
-//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//  !!! DEPRECATED. Use golang.org/x/oauth2 instead. !!!
-//  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//
-// Example usage:
-//
-//      // Specify your configuration. (typically as a global variable)
-//      var config = &oauth.Config{
-//              ClientId:     YOUR_CLIENT_ID,
-//              ClientSecret: YOUR_CLIENT_SECRET,
-//              Scope:        "https://www.googleapis.com/auth/buzz",
-//              AuthURL:      "https://accounts.google.com/o/oauth2/auth",
-//              TokenURL:     "https://accounts.google.com/o/oauth2/token",
-//              RedirectURL:  "http://you.example.org/handler",
-//      }
-//
-//      // A landing page redirects to the OAuth provider to get the auth code.
-//      func landing(w http.ResponseWriter, r *http.Request) {
-//              http.Redirect(w, r, config.AuthCodeURL("foo"), http.StatusFound)
-//      }
-//
-//      // The user will be redirected back to this handler, that takes the
-//      // "code" query parameter and Exchanges it for an access token.
-//      func handler(w http.ResponseWriter, r *http.Request) {
-//              t := &oauth.Transport{Config: config}
-//              t.Exchange(r.FormValue("code"))
-//              // The Transport now has a valid Token. Create an *http.Client
-//              // with which we can make authenticated API requests.
-//              c := t.Client()
-//              c.Post(...)
-//              // ...
-//              // btw, r.FormValue("state") == "foo"
-//      }
-//
 package oauth
 
 import (

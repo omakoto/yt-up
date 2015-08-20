@@ -3,29 +3,30 @@ package main
 import (
 	"flag"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
-	"golang.org/x/net/context"
 	"log"
 	"os"
 	"strings"
 	"syscall"
 	"time"
 
+	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/net/context"
+
 	"github.com/google/google-api-go-client/youtube/v3"
+	"github.com/omakoto/bashcomp"
 )
 
 var (
 	filename    = flag.String("filename", "", "Name of video file to upload")
 	title       = flag.String("title", "", "Video title")
 	description = flag.String("description", "", "Video description")
-	category    = flag.String("category", "", "Video category")
+	category    = flag.String("category", "", "Video category") // TODO
 	keywords    = flag.String("keywords", "", "Comma separated list of video keywords")
-	privacy     = flag.String("privacy", "unlisted", "Video privacy status")
+	privacy     = flag.String("privacy", "unlisted", "Video privacy status (private|unlisted|public)")
 	lastPercent = (int64)(0)
 )
 
 const (
-	//        SCOPE = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube"
 	SCOPE = "https://www.googleapis.com/auth/youtube.upload"
 )
 
@@ -45,8 +46,10 @@ func progress(current, total int64) {
 func main() {
 	flag.Parse()
 
+	bashcomp.HandleBashCompletion()
+
 	if *filename == "" {
-		log.Fatalf("You must provide a filename of a video file to upload")
+		log.Fatalf("Specify a filename of a video file with -filename")
 	}
 
 	log.Printf("Requesting auth token...\n")
