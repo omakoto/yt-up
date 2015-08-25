@@ -23,6 +23,7 @@ var (
 	category    = flag.String("category", "", "Video category") // TODO
 	keywords    = flag.String("keywords", "", "Comma separated list of video keywords")
 	privacy     = flag.String("privacy", "unlisted", "Video privacy status (private|unlisted|public)")
+	playlist    = flag.String("playlist", "", "Playlist name to add video to")
 	lastPercent = (int64)(0)
 )
 
@@ -64,6 +65,22 @@ func main() {
 	service, err := youtube.New(client)
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
+	}
+
+	if *playlist != "" {
+		playlists := youtube.NewPlaylistsService(service)
+		playListsCall := playlists.List("snippet")
+		playListsCall.Mine(true)
+		playlistsResult, err := playListsCall.Do()
+		if err != nil {
+			log.Fatalf("Error listing playlists: %v", err)
+		}
+
+		for item := range playlistsResult.Items {
+			log.Printf("%s\n", item)
+		}
+
+		return
 	}
 
 	upload := &youtube.Video{
