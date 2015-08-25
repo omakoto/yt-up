@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/google-api-go-client/youtube/v3"
 	"github.com/omakoto/bashcomp"
+	"github.com/omakoto/mlib"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 )
 
 const (
-	SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+	SCOPE = "https://www.googleapis.com/auth/youtube https://www.googleapis.com/auth/youtube.upload"
 )
 
 func progress(current, total int64) {
@@ -42,6 +43,64 @@ func progress(current, total int64) {
 		}
 	}
 	lastPercent = newPercent
+}
+
+func findPlaylist(service *youtube.Service, title string) string {
+	playlists := youtube.NewPlaylistsService(service)
+	playListsCall := playlists.List("snippet")
+	playListsCall.Mine(true)
+	playlistsResult, err := playListsCall.Do()
+	if err != nil {
+		log.Fatalf("Error listing playlists: %v", err)
+	}
+
+	for _, item := range playlistsResult.Items {
+		mlib.DebugDump(item)
+		if item.Snippet.Title == title {
+			return item.Id
+		}
+	}
+	return ""
+}
+
+func createPlaylist(service *youtube.Service, title string) string {
+	playlists := youtube.NewPlaylistsService(service)
+
+	playlist := youtube.Playlist{
+		Snippet: &youtube.PlaylistSnippet{
+			Title: title,
+		},
+		Status: &youtube.PlaylistStatus{
+			PrivacyStatus: *privacy,
+		},
+	}
+
+	playListsCall := playlists.Insert("snippet,status", &playlist)
+	playlistsResult, err := playListsCall.Do()
+	if err != nil {
+		log.Fatalf("Error inserting playlist: %v", err)
+	}
+	mlib.DebugDump(playlistsResult)
+
+	return playlistsResult.Id
+}
+
+func addToPlaylist(service *youtube.Service, videoId string, playlistId string) {
+	items := youtube.NewPlaylistItemsService(service)
+
+	itemInsertCall := items.Insert("snippet", &youtube.PlaylistItem{
+		Snippet: &youtube.PlaylistItemSnippet{
+			PlaylistId: playlistId,
+			ResourceId: &youtube.ResourceId{
+				Kind:    "youtube#video",
+				VideoId: videoId,
+			},
+		},
+	})
+	_, err := itemInsertCall.Do()
+	if err != nil {
+		log.Fatalf("Error adding video to playlist: %v", err)
+	}
 }
 
 func main() {
@@ -65,22 +124,6 @@ func main() {
 	service, err := youtube.New(client)
 	if err != nil {
 		log.Fatalf("Error creating YouTube client: %v", err)
-	}
-
-	if *playlist != "" {
-		playlists := youtube.NewPlaylistsService(service)
-		playListsCall := playlists.List("snippet")
-		playListsCall.Mine(true)
-		playlistsResult, err := playListsCall.Do()
-		if err != nil {
-			log.Fatalf("Error listing playlists: %v", err)
-		}
-
-		for item := range playlistsResult.Items {
-			log.Printf("%s\n", item)
-		}
-
-		return
 	}
 
 	upload := &youtube.Video{
@@ -131,4 +174,16 @@ func main() {
 	}
 
 	log.Printf("Uploaded %.1f MB in %s, %.1f minutes for 100MB : http://youtube.com/watch?v=%v\n", float64(size)/(1024.0*1024.0), duration, oneHundreadMegMinutes, response.Id)
+
+	if *playlist != "" {
+		playlistId := findPlaylist(service, *playlist)
+		if playlistId != "" {
+			log.Printf("Playlist found: %s\n", playlistId)
+		} else {
+			playlistId = createPlaylist(service, *playlist)
+			log.Printf("Playlist created: id=%s", playlistId)
+		}
+		addToPlaylist(service, response.Id, playlistId)
+		log.Printf("Video added to playlist")
+	}
 }
