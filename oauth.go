@@ -2,11 +2,11 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"os/user"
 	"runtime"
@@ -14,9 +14,9 @@ import (
 	"github.com/omakoto/yt-up/oauth"
 )
 
-var (
-	clientId     = flag.String("clientid", "", "Client ID")
-	clientSecret = flag.String("secret", "", "Client secret")
+const (
+	CLIENT_ID_ENV     = "YT_UP_CLIENT_ID"
+	CLIENT_SECRET_ENV = "YT_UP_CLIENT_SECRET"
 )
 
 // openURL opens a browser window to the specified location.
@@ -46,17 +46,19 @@ func getHomeDir() string {
 }
 
 func buildConfig(scope string) (*oauth.Config, error) {
-	if *clientId == "" {
-		log.Fatalf("You must provide an oauth client ID with -clientid")
+	clientId := os.Getenv(CLIENT_ID_ENV)
+	if clientId == "" {
+		log.Fatalf("You must provide an oauth client ID via " + CLIENT_ID_ENV)
 	}
 
-	if *clientSecret == "" {
-		log.Fatalf("You must provide an oauth client secret with -secret")
+	clientSecret := os.Getenv(CLIENT_SECRET_ENV)
+	if clientSecret == "" {
+		log.Fatalf("You must provide an oauth client secret via " + CLIENT_SECRET_ENV)
 	}
 
 	return &oauth.Config{
-		ClientId:       *clientId,
-		ClientSecret:   *clientSecret,
+		ClientId:       clientId,
+		ClientSecret:   clientSecret,
 		Scope:          scope,
 		AuthURL:        "https://accounts.google.com/o/oauth2/auth",
 		TokenURL:       "https://accounts.google.com/o/oauth2/token",
