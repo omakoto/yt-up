@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/net/context"
 
-	"github.com/google/google-api-go-client/youtube/v3"
+	"google.golang.org/api/youtube/v3"
 	"github.com/omakoto/bashcomp"
 	"github.com/omakoto/mlib"
 )
